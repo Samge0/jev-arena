@@ -10,6 +10,15 @@
     laya: { role: '421M · LOCAL WEIGHTS', name: 'Laya' },
   };
   const DIRS = { 'up': '↑ Up', 'down': '↓ Down', 'left': '← Left', 'right': '→ Right' };
+  const actionLabel = (game, action) => {
+    if (action == null) return '—';
+    if (game === '1024') return DIRS[action] || action;
+    // tetris v2 combined action "r<orient>c<col>"
+    const m = /^r(\d+)c(\d+)$/.exec(String(action));
+    if (!m) return action;
+    const rot = { 0: '0°', 1: '90°', 2: '180°', 3: '270°' }[m[1]] || `${m[1]}°`;
+    return `${rot} @ col ${m[2]}`;
+  };
   const state = { data: null, game: '1024', seed: null, step: 0, speed: 16, playing: false, animation: null, tick: 0, panels: [] };
   const api = { ready: false, error: null, setFrame, getSnapshot };
   window.jevArena = api;
@@ -27,7 +36,7 @@
     : g;
 
   function validateData(data) {
-    if (!data || data.schema !== 'jev-arena-v1' || !Array.isArray(data.examples) || !data.examples.length) {
+    if (!data || !/^jev-arena-v[12]$/.test(data.schema || '') || !Array.isArray(data.examples) || !data.examples.length) {
       throw new Error('The recording file does not contain a supported arena dataset.');
     }
     for (const ex of data.examples) {
@@ -116,7 +125,8 @@
         const item = document.createElement('div');
         item.className = 'probability-item';
         const top = document.createElement('div'); top.className = 'probability-top';
-        const label = document.createElement('span'); label.textContent = DIRS[opt] || `Col ${opt}`;
+        const label = document.createElement('span'); label.textContent = actionLabel(state.game, opt);
+        label.title = label.textContent;
         const val = document.createElement('span'); val.className = 'probability-value';
         top.append(label, val);
         const track = document.createElement('div'); track.className = 'probability-track';
@@ -156,7 +166,7 @@
       const isDecision = step > 0 && frame.action != null;
       card.querySelector('.decision-title').textContent = step ? 'Last decision' : 'Initial state';
       card.querySelector('.decision-action').textContent = !step ? 'No action yet'
-        : `${state.game === 'tetris' ? 'col ' : ''}${frame.action}${frame.violation ? ' · off-board' : ''}`;
+        : `${actionLabel(state.game, frame.action)}${frame.violation ? ' · off-board' : ''}`;
       card.querySelector('.decision-action').style.color = frame.violation ? '#a34d33' : '';
       for (const bar of panel.bars) {
         const v = step ? (frame.probabilities || {})[bar.opt] : undefined;
@@ -326,8 +336,8 @@
       const table = document.createElement('table');
       table.className = 'match-table';
       const cols = game === 'tetris'
-        ? ['Engine', 'Score', 'Lines', 'Pieces', 'Holes', 'Max height', 'Off-board picks', 'Avg decision']
-        : ['Engine', 'Score', 'Max tile', 'Moves', 'Result', 'Off-board picks', 'Avg decision'];
+        ? ['Engine', 'Score', 'Lines', 'Pieces', 'Holes', 'Orients used', 'Off-board picks', 'Avg decision']
+        : ['Engine', 'Score', 'Max tile', 'Oscillation', 'Repeats', 'Result', 'Off-board picks', 'Avg decision'];
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
       for (const c of cols) { const th = document.createElement('th'); th.textContent = c; trh.append(th); }
@@ -344,11 +354,16 @@
         chip.innerHTML = `<span class="engine-chip"><i style="background:${ACCENTS[r.engine]}"></i>${ENGINE_TITLES[r.engine]?.name || r.engine}</span>`;
         tr.append(chip);
         if (game === 'tetris') {
+          const orientCell = td(r.orientations_used != null ? `${r.orientations_used} / ${r.pieces ? '≥2' : '—'}` : '—', 'num');
+          orientCell.title = r.orientation_usage ? JSON.stringify(r.orientation_usage) : '';
           tr.append(td(r.score, 'num'), td(r.lines, 'num'), td(r.pieces, 'num'), td(r.holes, 'num'),
-            td(r.max_height, 'num'), td(r.violations, 'num'), td(r.avg_latency_ms ? `${r.avg_latency_ms} ms` : '—', 'num'));
+            orientCell, td(r.violations, 'num'), td(r.avg_latency_ms ? `${Math.round(r.avg_latency_ms)} ms` : '—', 'num'));
         } else {
-          tr.append(td(r.score, 'num'), td(r.max_tile, 'num'), td(r.moves ?? r.steps, 'num'),
-            td(r.outcome), td(r.violations, 'num'), td(r.avg_latency_ms ? `${r.avg_latency_ms} ms` : '—', 'num'));
+          const oscCell = td(r.oscillation_rate != null ? `${(r.oscillation_rate * 100).toFixed(0)}%` : '—', 'num');
+          oscCell.title = r.direction_usage ? JSON.stringify(r.direction_usage) : '';
+          tr.append(td(r.score, 'num'), td(r.max_tile, 'num'), oscCell,
+            td(r.repeat_rate != null ? `${(r.repeat_rate * 100).toFixed(0)}%` : '—', 'num'),
+            td(r.outcome), td(r.violations, 'num'), td(r.avg_latency_ms ? `${Math.round(r.avg_latency_ms)} ms` : '—', 'num'));
         }
         tbody.append(tr);
       }

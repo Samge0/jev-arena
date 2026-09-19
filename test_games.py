@@ -102,7 +102,7 @@ def test_determinism():
 def test_state_render():
     env = Game1024(seed=3)
     txt = env.state_for_model()
-    assert "1024 board" in txt and "Board:" in txt
+    assert "1024 board" in txt and "row0:" in txt  # v2 coordinate labels
     t = Tetris(seed=3)
     txt = t.state_for_model()
     assert "Tetris board" in txt and "Current piece" in txt

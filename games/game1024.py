@@ -130,30 +130,32 @@ class Game1024:
     def action_descriptions(self):
         """Per-direction REAL outcome data (like the reference site's planner):
         merge count, gained score, empty cells after. The model still judges
-        which outcome is best; identical data goes to every engine."""
+        which outcome is best; identical data goes to every engine.
+        v2: adds the largest merge produced and the new largest tile."""
         desc = {}
         for d in self.legal_actions():
             snapshot = [row[:] for row in self.grid]
             before_empty = sum(1 for row in snapshot for v in row if v == 0)
             gained = self._move(d)
-            merges = 0
-            # recompute merge events: gained/2 summed over merged pairs count
-            # count by comparing tile sums: merges = gained / (2 * value-per-pair-sum)? simpler: count pairs
-            # recount directly on a fresh replay
-            self.grid = [row[:] for row in snapshot]
-            merges = self._count_merges(d)
+            merges, biggest_merge = self._merge_stats(d)
             after_empty = sum(1 for row in self.grid for v in row if v == 0)
+            new_max = max(v for row in self.grid for v in row)
             self.grid = snapshot
             arrow = {"up": "toward row 0", "down": "toward row 3",
                      "left": "toward column 0", "right": "toward column 3"}[d]
-            desc[d] = (f"slide {d} ({arrow}): {merges} merge{'s' if merges != 1 else ''} "
-                       f"(+{gained} points), {after_empty} empty cells after "
-                       f"(now {before_empty})")
+            merge_txt = f"{merges} merge{'s' if merges != 1 else ''}"
+            if merges:
+                merge_txt += f" (biggest makes {biggest_merge})"
+            desc[d] = (f"slide {d} ({arrow}): {merge_txt}, +{gained} points, "
+                       f"{after_empty} empty cells after (now {before_empty}), "
+                       f"largest tile becomes {new_max}")
         return desc
 
-    def _count_merges(self, direction):
+    def _merge_stats(self, direction):
+        """Return (merge_count, biggest_merged_value) for a slide."""
         n = self.size
         merges = 0
+        biggest = 0
         grid = [[v for v in row] for row in self.grid]
         if direction in ("left", "right"):
             for r in range(n):
@@ -165,6 +167,7 @@ class Game1024:
                 while i + 1 < len(tiles):
                     if tiles[i] == tiles[i + 1]:
                         merges += 1
+                        biggest = max(biggest, tiles[i] * 2)
                         i += 2
                     else:
                         i += 1
@@ -178,10 +181,11 @@ class Game1024:
                 while i + 1 < len(tiles):
                     if tiles[i] == tiles[i + 1]:
                         merges += 1
+                        biggest = max(biggest, tiles[i] * 2)
                         i += 2
                     else:
                         i += 1
-        return merges
+        return merges, biggest
 
     def step(self, action: str):
         if not self.alive:
@@ -214,11 +218,16 @@ class Game1024:
         return {"game": "1024", "size": self.size, "grid": self.grid}
 
     def state_for_model(self):
+        # v2: coordinate-labeled rows so models can reference positions unambiguously
+        labeled = []
+        for r, row in enumerate(self.grid):
+            cells = " ".join(f"{v:4d}" if v else "   ." for v in row)
+            labeled.append(f"row{r}: {cells}")
         return "\n".join([
             f"1024 board 4x4, after move #{self.moves}. Numbers are tile values, 0 shown as '.'. After your chosen slide, a new tile (value 2) appears in a random empty cell.",
             f"Score so far: {self.score}. Largest tile: {self.max_tile}. Goal: reach 1024. Game ends when no slide changes the board.",
-            "Board:",
-            self.state_text(),
+            "Board (row coordinates on the left, columns run 0-3 left to right):",
+            *labeled,
         ])
 
     def summary(self):
