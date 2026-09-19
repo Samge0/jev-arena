@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
+  <meta name="description" content="Jev, NanoJev and Laya play the same Tetris and 1024 games. Real System-One decisions, replayed side by side.">
+  <title>Jev Arena — Decisions at play</title>
+  <link rel="stylesheet" href="arena.css">
+  <script src="arena.js" defer></script>
+</head>
+<body>
+  <main id="comparisonStage" class="stage">
+    <header class="site-header">
+      <a class="wordmark" href="./"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Jev Arena<span class="wordmark-note">System One models, at play</span></a>
+      <span class="recorded"><i aria-hidden="true"></i> REAL GAME REPLAYS</span>
+    </header>
+
+    <section class="intro">
+      <div>
+        <p class="eyebrow">THREE ENGINES. TWO GAMES. SAME QUESTIONS.</p>
+        <h1>Decisions at play<span>.</span></h1>
+        <p class="intro-description">Jev (TypeSafe API), NanoJev (0.6B local) and Laya (421M local) play the same seeded games.
+        Every move is one Choice question over the exact same options; the answer's probabilities drive the replay bars.</p>
+      </div>
+      <nav class="game-tabs" aria-label="Game">
+        <button type="button" data-game="1024" class="active" aria-pressed="true"><span aria-hidden="true">◱</span> 1024</button>
+        <button type="button" data-game="tetris" aria-pressed="false"><span aria-hidden="true">▦</span> Tetris</button>
+      </nav>
+    </section>
+
+    <section id="loadState" class="load-state" role="status"><span class="loading-dot" aria-hidden="true"></span><h2>Loading the real runs</h2><p>The recorded states and decisions will appear here.</p></section>
+
+    <section id="viewer" hidden aria-label="Side-by-side game comparison">
+      <div class="scene-heading">
+        <div class="scene-title"><span id="sceneTag" class="scene-tag">1024</span><h2 id="sceneTitle"></h2><span id="sceneSize" class="scene-size"></span></div>
+        <label class="seed-control" style="display:flex;align-items:center;gap:8px;font-size:11px;color:#7a8881">Seed
+          <select id="seedSelect" class="seed-select" aria-label="Game seed"></select>
+        </label>
+      </div>
+      <div id="modelPanels" class="model-panels"></div>
+
+      <section class="transport" aria-label="Synchronized playback controls">
+        <button id="play" class="play" type="button" aria-label="Play all three recordings"><span id="playIcon" aria-hidden="true">▶</span></button>
+        <button id="restart" class="icon-button restart" type="button" aria-label="Restart all recordings" title="Restart">↺</button>
+        <div class="timeline-area"><div class="timeline-caption"><span>Synchronized by game step</span><span id="stepCounter">0 / 0</span></div><input id="timeline" type="range" min="0" max="0" value="0" step="1" aria-label="Shared game step"></div>
+        <div class="step-controls"><button id="previous" class="icon-button" type="button" aria-label="Previous step" title="Previous step">‹</button><button id="next" class="icon-button" type="button" aria-label="Next step" title="Next step">›</button></div>
+        <label class="speed"><span>SPEED</span><select id="speed" aria-label="Playback speed"><option value="4">4 steps/s</option><option value="8">8 steps/s</option><option value="16" selected>16 steps/s</option><option value="32">32 steps/s</option><option value="64">64 steps/s</option></select></label>
+      </section>
+      <div class="viewer-footer"><span id="sceneCaption">Recorded decisions · identical question per step</span>
+        <div class="legend"><span><i class="legend-agent"></i>Latest move</span><span><i class="legend-food"></i>Spawn / score</span><span><i class="legend-trail"></i>Trail</span></div>
+      </div>
+    </section>
+
+    <section id="aggregate" class="agg-section" hidden>
+      <h3>Tallies across seeds <span id="tallyNote" style="font-weight:450;color:#93a29a;font-size:11px"></span></h3>
+      <div id="tallyTables"></div>
+    </section>
+
+    <footer class="site-footer"><span>Arena build · jev-arena-v1 recordings</span><span>Jev API · NanoJev 0.6B · Laya 421M</span></footer>
+  </main>
+
+  <template id="modelTemplate">
+    <article class="model-panel">
+      <header class="model-header"><div><p class="model-role"></p><h2 class="model-name"></h2></div><span class="model-marker" aria-hidden="true"></span></header>
+      <div class="board-wrap"><canvas role="img" aria-label="Recorded game board"></canvas><span class="board-status" hidden></span></div>
+      <div class="model-stats"><div><span class="stat-label">Steps</span><strong class="stat-steps">0</strong><small class="stat-total"></small></div><div><span class="stat-label stat-secondary-label">Score</span><strong class="stat-secondary">0</strong></div><div class="state-stat"><span class="stat-label">Status</span><strong class="stat-status">Ready</strong><small class="stat-outcome"></small></div></div>
+      <section class="decision"><div class="decision-heading"><span class="decision-title">Last decision</span><span class="decision-action">Initial state</span></div><div class="probability-grid"></div><div class="decision-foot"><span class="probability-kind"></span><span class="decision-origin"></span></div></section>
+    </article>
+  </template>
+</body>
+</html>
