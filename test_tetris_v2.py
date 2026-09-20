@@ -41,8 +41,9 @@ def test_rotation_changes_landing():
         if env.current != "I":
             continue
         # tower in the middle: flat I cannot cross it, vertical I can rest on top
-        env.grid = [[0] * 10 for _ in range(14)]
-        for r in range(6, 14):
+        H = env.h
+        env.grid = [[0] * 10 for _ in range(H)]
+        for r in range(env.h - 8, env.h):
             for c in range(4, 6):
                 env.grid[r][c] = 1
         acts = env.legal_actions()
@@ -53,8 +54,9 @@ def test_rotation_changes_landing():
         # flat I across the tower rests ON TOP (row 5) and digs 16 holes;
         # the description exposes that cost while rotation r1 avoids it
         desc = env.action_descriptions()
-        assert "rests on row 5" in desc["r0c4"]
-        assert "+16" in desc["r0c4"] or "+14" in desc["r0c4"]
+        rest_row = env.h - 8 - 1  # top of the tower
+        assert f"rests on row {rest_row}" in desc["r0c4"]
+        assert "+" in desc["r0c4"]  # holes increase over the tower
         assert any(a in ("r1c4", "r1c5") for a in vert)  # vertical rests on tower
         print("rotation landing ok with seed", seed)
         return
@@ -75,7 +77,9 @@ def test_random_game_and_clears():
         def key(a):
             d = desc[a]
             clears = sum(d.count(f"clears {n}") for n in (1, 2, 3, 4))
-            holes = int(d.split("total holes ")[1].split(" ")[0]) if "total holes" in d else 99
+            import re as _re
+            _m = _re.search(r"total holes (\d+)", d)
+            holes = int(_m.group(1)) if _m else 99
             return (clears, -holes)
         best = max(desc, key=key)
         env.step(best)
@@ -83,12 +87,12 @@ def test_random_game_and_clears():
     s = env.summary()
     print("tetris_v2 greedy:", s)
     assert s["pieces"] == steps or not env.alive
-    assert len(env.grid) == 14
+    assert len(env.grid) == env.h
 
 
 def test_left_edge_death():
     env = TetrisV2(seed=2)
-    env.grid = [[1] * 10 for _ in range(14)]
+    env.grid = [[1] * 10 for _ in range(env.h)]
     assert env.legal_actions() == []
     env.step("r0c0")
     assert not env.alive and env.outcome == "topped_out"

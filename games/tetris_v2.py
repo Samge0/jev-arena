@@ -62,7 +62,7 @@ ROT_NAME = {0: "0°", 1: "90°", 2: "180°", 3: "270°"}
 class TetrisV2:
     name = "tetris"
 
-    def __init__(self, seed: int, width: int = 10, height: int = 14, max_options: int = 18):
+    def __init__(self, seed: int, width: int = 10, height: int = 20, max_options: int = 18):
         self.w = width
         self.h = height
         self.max_options = max_options
@@ -153,6 +153,18 @@ class TetrisV2:
                         seen = True
                     elif seen:
                         holes_after += 1
+            # aggregate height + bumpiness after (classic Dellacherie features)
+            heights = []
+            for c in range(self.w):
+                hh = 0
+                for r in range(self.h):
+                    if trial[r][c] != CELL_EMPTY:
+                        hh = self.h - r
+                        break
+                heights.append(hh)
+            agg_h = sum(heights)
+            bump = sum(abs(heights[i] - heights[i + 1]) for i in range(self.w - 1))
+            max_h = max(heights)
             w = len(mask[0])
             tag = f"rotate {ROT_NAME[oi]}, " if len(PIECES_V2[self.current]) > 1 else ""
             line_part = f"clears {cleared} line{'s' if cleared != 1 else ''}" if cleared else "clears nothing"
@@ -160,7 +172,8 @@ class TetrisV2:
                          else f"total holes {holes_after} ({holes_after - holes_now:+d})")
             desc[f"r{oi}c{left}"] = (
                 f"{tag}left edge at column {left} (occupies columns {left}-{left + w - 1}, "
-                f"rests on row {bottom}), {line_part}, {hole_part}")
+                f"rests on row {bottom}), {line_part}, {hole_part}, "
+                f"resulting stack height sum {agg_h}, max column {max_h}, bumpiness {bump}")
         return desc
 
     def step(self, action: str):
@@ -210,6 +223,12 @@ class TetrisV2:
                 out.append(left)
         return out
 
+    def next_piece(self):
+        """Piece after the current one (for the state preview)."""
+        if self.idx + 1 < len(self.queue):
+            return self.queue[self.idx + 1]
+        return None
+
     # ---------- rendering ----------
     def state_text(self):
         return "\n".join("".join("#" if v != CELL_EMPTY else "." for v in row) for row in self.grid)
@@ -223,10 +242,17 @@ class TetrisV2:
         shapes = "; ".join(
             f"{ROT_NAME[oi]}: " + "/".join("".join("#" if v else "." for v in row) for row in mask)
             for oi, mask in enumerate(PIECES_V2[self.current]))
+        nxt = self.next_piece()
+        nxt_shapes = ""
+        if nxt:
+            nxt_shapes = "; ".join(
+                f"{ROT_NAME[oi]}: " + "/".join("".join("#" if v else "." for v in row) for row in mask)
+                for oi, mask in enumerate(PIECES_V2[nxt]))
         return "\n".join([
             f"Tetris board {self.w}x{self.h}. Current piece: {self.current}. Its allowed orientations (row masks): {shapes}.",
+            f"Next piece in the queue (plan ahead): {nxt}. Orientations: {nxt_shapes}.",
             f"Rows are listed top (row 0) to bottom (row {self.h - 1}). '#' is filled, '.' is empty. Dropped pieces never move again.",
-            f"Board fill: {filled} cells. Holes (empty cells with fill above): {self._holes()}. Lines cleared so far: {self.lines}. Prefer placements that clear lines and do not create holes.",
+            f"Board fill: {filled} cells. Holes (empty cells with fill above): {self._holes()}. Lines cleared so far: {self.lines}. Keep the stack flat and low so future pieces still fit.",
             "Board:",
             self.state_text(),
         ])

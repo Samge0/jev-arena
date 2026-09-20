@@ -43,6 +43,14 @@ def render_state(env, game):
     return protocol_v3.tetris_state_v3(env) if game == "tetris" else protocol_v3.game1024_state_v3(env)
 
 
+def render_state_for(engine, env, game):
+    """Token-limited engines (nanojev: 512 hard cap, refuses overflow) get the
+    compact tetris rendering; everyone else gets the full v4 state."""
+    if game == "tetris" and engine.name == "nanojev":
+        return protocol_v3.tetris_state_compact(env)
+    return render_state(env, game)
+
+
 def build_questions(env, game):
     return protocol_v3.tetris_questions_v3(env) if game == "tetris" else protocol_v3.game1024_questions_v3(env)
 
@@ -87,9 +95,12 @@ def play_one(engine, game_name, seed):
                            "decision_source": "forced", "violation": False,
                            "latency_ms": 0, "noul": None}
         else:
-            state_text = render_state(env, game_name)
+            state_text = render_state_for(engine, env, game_name)
             questions = build_questions(env, game_name)
             noul_qid = "hole_free_exists" if game_name == "tetris" else "stuck_risk"
+            # nanojev's predictor only accepts choice questions (512-token cap)
+            if engine.name == "nanojev":
+                questions = {"action": questions["action"]}
             try:
                 answers, usage = engine.ask_multi(state_text, questions)
                 consecutive_errors = 0
