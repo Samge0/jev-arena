@@ -192,10 +192,15 @@ class Game1024:
             return
         if action not in DIRS:
             raise ValueError(f"bad action {action}")
+        snapshot = [row[:] for row in self.grid]
         gained = self._move(action)
+        changed = any(self.grid[r][c] != snapshot[r][c]
+                      for r in range(self.size) for c in range(self.size))
         self.moves += 1
-        if gained:
+        if changed:
             self.score += gained
+            # standard 2048/Threes rule: a new tile spawns after EVERY
+            # board-changing move (not only after merges)
             self._spawn()
         self._refresh_max()
         if self.max_tile >= self.win_value:

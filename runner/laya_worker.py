@@ -1,7 +1,8 @@
-"""laya worker: line protocol. stdin JSON -> stdout JSON, one per line.
+"""laya worker v2: single- AND multi-question line protocol.
 
-Body: {"state": str, "instructions": str, "criteria": {opt: desc}}
-Reply: same shape as nanojev worker.
+Requests:
+  {"state", "instructions", "criteria"}                 -> legacy single choice
+  {"mode": "multi", "state", "questions": {qid: q}}    -> fan-out (choice only)
 """
 import json
 import sys
@@ -12,6 +13,13 @@ import laya
 agent = laya.load("convaiinnovations/laya")
 print("READY", flush=True)
 
+
+def ask_one(state, instructions, criteria):
+    result = agent.predict(state, {"q": {"type": "choice", "instructions": instructions,
+                                         "criteria": criteria}})
+    return result["answers"]["q"]
+
+
 for line in sys.stdin:
     line = line.strip()
     if not line:
@@ -19,20 +27,27 @@ for line in sys.stdin:
     req = json.loads(line)
     t0 = time.perf_counter()
     try:
-        result = agent.predict(req["state"], {"q": {"type": "choice",
-                                                    "instructions": req["instructions"],
-                                                    "criteria": req["criteria"]}})
-        latency = int((time.perf_counter() - t0) * 1000)
-        ans = result["answers"]["q"]
-        out = {
-            "choice": ans["choice"],
-            "probabilities": ans["probabilities"],
-            "confidence": ans.get("confidence"),
-            "latency_ms": latency,
-            "raw": {"backend": "laya-modernbert-421m"},
-        }
+        if req.get("mode") == "multi":
+            answers = {}
+            for qid, q in req["questions"].items():
+                if q.get("type") != "choice":
+                    continue
+                ans = ask_one(req["state"], q["instructions"], q["criteria"])
+                answers[qid] = {"choice": ans.get("choice"),
+                                "probabilities": ans.get("probabilities"),
+                                "confidence": ans.get("confidence"),
+                                "latency_ms": int((time.perf_counter() - t0) * 1000),
+                                "raw": {"backend": "laya"}}
+            print(json.dumps({"answers": answers, "usage": None}), flush=True)
+        else:
+            ans = ask_one(req["state"], req["instructions"], req["criteria"])
+            print(json.dumps({"choice": ans["choice"], "probabilities": ans["probabilities"],
+                              "confidence": ans.get("confidence"),
+                              "latency_ms": int((time.perf_counter() - t0) * 1000),
+                              "raw": {"backend": "laya-modernbert-421m"}}), flush=True)
     except Exception as e:
-        out = {"choice": None, "probabilities": {}, "confidence": None,
+        out = {"answers": {}, "error": f"{type(e).__name__}: {e}"} if req.get("mode") == "multi" else \
+              {"choice": None, "probabilities": {}, "confidence": None,
                "latency_ms": int((time.perf_counter() - t0) * 1000),
                "raw": {"error": f"{type(e).__name__}: {e}"}}
-    print(json.dumps(out), flush=True)
+        print(json.dumps(out), flush=True)

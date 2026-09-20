@@ -1,8 +1,9 @@
-"""NanoJev worker: line protocol. stdin JSON -> stdout JSON, one per line.
+"""NanoJev worker v2: single- AND multi-question line protocol.
 
-Body: {"state": str, "instructions": str, "criteria": {opt: desc}}
-Reply: {"choice": str, "probabilities": {...}, "confidence": null,
-        "latency_ms": int, "raw": {...}}
+Requests:
+  {"state", "instructions", "criteria"}                 -> legacy single choice
+  {"mode": "multi", "state", "questions": {qid: q}}    -> fan-out (choice only)
+Replies: single -> flat answer; multi -> {"answers": {qid: answer}, "usage": null}
 """
 import json
 import sys
@@ -16,33 +17,47 @@ from predict_toy_decisions import DecisionPredictor  # noqa: E402
 engine = DecisionPredictor(ckpt, precision="bf16")
 print("READY", flush=True)
 
+
+def predict_choice(state, instructions, criteria):
+    body = {"states": [{"id": "q", "state": state,
+                        "questions": {"q": {"type": "choice", "instructions": instructions,
+                                            "criteria": criteria}}}]}
+    result = engine.predict(body)
+    ans = result["states"][0]["answers"]["q"]
+    return ans
+
+
 for line in sys.stdin:
     line = line.strip()
     if not line:
         continue
     req = json.loads(line)
-    body = {
-        "states": [{
-            "id": "q",
-            "state": req["state"],
-            "questions": {"q": {"type": "choice", "instructions": req["instructions"],
-                                 "criteria": req["criteria"]}},
-        }]
-    }
     t0 = time.perf_counter()
     try:
-        result = engine.predict(body)
-        latency = int((time.perf_counter() - t0) * 1000)
-        ans = result["states"][0]["answers"]["q"]
-        out = {
-            "choice": ans["choice"],
-            "probabilities": ans["probabilities"],
-            "confidence": ans.get("confidence"),
-            "latency_ms": latency,
-            "raw": {"backend": "nanojev-decision-predictor", "precision": "bf16"},
-        }
-    except Exception as e:  # keep the worker alive on per-question errors
-        out = {"choice": None, "probabilities": {}, "confidence": None,
+        if req.get("mode") == "multi":
+            questions = {qid: q for qid, q in req["questions"].items() if q.get("type") == "choice"}
+            body = {"states": [{"id": qid, "state": req["state"], "questions": {qid: q}}
+                               for qid, q in questions.items()]}
+            result = engine.predict(body)
+            answers = {}
+            for st in result["states"]:
+                qid = st["id"]
+                ans = st["answers"][qid]
+                answers[qid] = {"choice": ans.get("choice"),
+                                "probabilities": ans.get("probabilities"),
+                                "confidence": ans.get("confidence"),
+                                "latency_ms": int((time.perf_counter() - t0) * 1000),
+                                "raw": {"backend": "nanojev"}}
+            print(json.dumps({"answers": answers, "usage": None}), flush=True)
+        else:
+            ans = predict_choice(req["state"], req["instructions"], req["criteria"])
+            print(json.dumps({"choice": ans["choice"], "probabilities": ans["probabilities"],
+                              "confidence": ans.get("confidence"),
+                              "latency_ms": int((time.perf_counter() - t0) * 1000),
+                              "raw": {"backend": "nanojev-decision-predictor", "precision": "bf16"}}), flush=True)
+    except Exception as e:
+        out = {"answers": {}, "error": f"{type(e).__name__}: {e}"} if req.get("mode") == "multi" else \
+              {"choice": None, "probabilities": {}, "confidence": None,
                "latency_ms": int((time.perf_counter() - t0) * 1000),
                "raw": {"error": f"{type(e).__name__}: {e}"}}
-    print(json.dumps(out), flush=True)
+        print(json.dumps(out), flush=True)

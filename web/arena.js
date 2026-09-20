@@ -36,7 +36,7 @@
     : g;
 
   function validateData(data) {
-    if (!data || !/^jev-arena-v[12]$/.test(data.schema || '') || !Array.isArray(data.examples) || !data.examples.length) {
+    if (!data || !/^jev-arena-v[123]$/.test(data.schema || '') || !Array.isArray(data.examples) || !data.examples.length) {
       throw new Error('The recording file does not contain a supported arena dataset.');
     }
     for (const ex of data.examples) {
@@ -176,6 +176,8 @@
       }
       card.querySelector('.probability-kind').textContent = !step ? 'Awaiting the first recorded action'
         : frame.violation ? 'Chosen option was not legal — engine override'
+        : frame.decision_source === 'forced' ? 'Single legal action · executed by code'
+        : frame.noul != null ? `Action probabilities · noul gate ${frame.noul.toFixed(2)}`
         : frame.confidence != null ? `Action probabilities · confidence ${(frame.confidence * 100).toFixed(0)}%`
         : 'Action probabilities';
       card.querySelector('.decision-origin').textContent = step
