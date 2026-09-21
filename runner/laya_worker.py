@@ -5,12 +5,13 @@ Requests:
   {"mode": "multi", "state", "questions": {qid: q}}    -> fan-out (choice only)
 """
 import json
+import os
 import sys
 import time
 
 import laya
 
-agent = laya.load("convaiinnovations/laya")
+agent = laya.load(os.environ.get("LAYA_MODEL_ID", "convaiinnovations/laya"))
 print("READY", flush=True)
 
 

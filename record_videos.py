@@ -10,7 +10,9 @@ import time
 
 from playwright.sync_api import sync_playwright
 
-OUT = r"F:\Space\PRO\test\jev-arena\docs-media"
+import config
+
+OUT = str(config.DOCS_MEDIA)
 os.makedirs(OUT, exist_ok=True)
 
 GAMES = [
@@ -30,7 +32,7 @@ def record(game, hash_, speed):
             record_video_size={"width": 1440, "height": 1000},
         )
         page = ctx.new_page()
-        page.goto("http://127.0.0.1:8775/" + hash_, wait_until="networkidle")
+        page.goto(config.ARENA_URL + hash_, wait_until="networkidle")
         page.wait_for_timeout(2500)
         snap = page.evaluate("window.jevArena.getSnapshot()")
         if not snap.get("ready"):

@@ -1,11 +1,14 @@
 """Playwright verification of the arena site: load, interactions, console errors, screenshots."""
 import json
+import os
 import sys
+
 from playwright.sync_api import sync_playwright
 
-BASE = "http://127.0.0.1:8775/"
-OUT = r"F:\Space\PRO\test\jev-arena\shots"
-import os
+import config
+
+BASE = config.ARENA_URL
+OUT = str(config.SHOTS)
 os.makedirs(OUT, exist_ok=True)
 
 errors = []
@@ -79,7 +82,6 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     results["tally_tables"] = page.locator("#tallyTables table").count()
     results["tally_rows"] = page.locator("#tallyTables tbody tr").count()
-    page.screenshot(path=f"{OUT}/07_tallies.png", full_page=True)
 
     # 8. seed switch works
     page.locator("#seedSelect").select_option("901")

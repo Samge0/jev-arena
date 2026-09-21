@@ -6,6 +6,7 @@ Requests:
 Replies: single -> flat answer; multi -> {"answers": {qid: answer}, "usage": null}
 """
 import json
+import os
 import sys
 import time
 
@@ -14,7 +15,10 @@ ckpt = sys.argv[1]
 # default 512 refuses (not truncates) overflowing candidate paths. Game states
 # with 17-34 enriched options need ~550-700 tokens.
 max_len = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
-sys.path.insert(0, r"F:\Space\PRO\test\nanojev\NanoJev\scripts")
+_scripts = os.environ.get("NANOJEV_SCRIPTS")
+if not _scripts:
+    raise SystemExit("NANOJEV_SCRIPTS env var not set - start me via runner/engines_multi.py")
+sys.path.insert(0, _scripts)
 
 from predict_toy_decisions import DecisionPredictor  # noqa: E402
 
