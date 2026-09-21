@@ -8,7 +8,17 @@
 
 **Tetris**：
 
+
+https://github.com/user-attachments/assets/7f3f8752-eddc-43d0-9e5c-c6e3ef6bbe7c
+
+
+
 **1024** ：
+
+
+https://github.com/user-attachments/assets/032911cb-950f-464f-8c49-13c4db2cce81
+
+
 
 > 左 Jev（云 API）· 中 NanoJev（0.6B 本地）· 右 Laya（421M 本地）。
 
