@@ -38,7 +38,7 @@
 .model-name{font-size:17px;font-weight:640;letter-spacing:-.4px;margin:0}
 .model-marker{width:9px;height:9px;border-radius:3px;background:var(--accent);margin-top:5px;transform:rotate(45deg)}
 .board-wrap{position:relative;background:#fbfcf9;border:1px solid #e8ede6;border-radius:12px;padding:8px}
-.board-wrap canvas{display:block;width:100%;height:auto;aspect-ratio:1}
+.board-wrap canvas{display:block;width:100%;height:auto;aspect-ratio:10/14}
 .board-status{position:absolute;inset:auto 14px 14px auto;background:#ffffffee;border:1px solid #d9e2da;color:#2d5549;font-size:11px;font-weight:620;border-radius:9px;padding:5px 10px;box-shadow:0 3px 9px #233f3812}
 .board-status.negative{color:#a34d33;border-color:#e8c8ba;background:#fdf3ee}
 .model-stats{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:8px}

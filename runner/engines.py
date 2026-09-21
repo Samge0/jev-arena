@@ -80,7 +80,7 @@ class NanoJevLocal:
         ckpt = r"F:\Space\PRO\test\nanojev\checkpoints\NanoJev"
         import subprocess
         self._proc = subprocess.Popen(
-            [python, script, ckpt],
+            [python, script, ckpt, "1024"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             text=True, encoding="utf-8", bufsize=1,
         )

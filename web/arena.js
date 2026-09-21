@@ -118,6 +118,8 @@
         state.game === 'tetris' ? 'Lines <b>· holes</b>' : 'Max tile <b>· score</b>';
       const canvas = card.querySelector('canvas');
       canvas.setAttribute('aria-label', `${ENGINE_TITLES[engine].name}: ${state.game} recorded board`);
+      // board aspect follows the game grid (tetris 10x20, 1024 4x4)
+      canvas.style.aspectRatio = state.game === 'tetris' ? '10 / 20' : '1 / 1';
       const context = canvas.getContext('2d', { willReadFrequently: true });
       if (!context) throw new Error('This browser does not support a 2D game canvas.');
       const options = run && run.frames[1] ? Object.keys(run.frames[1].probabilities || {}) : [];

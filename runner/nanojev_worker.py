@@ -10,11 +10,15 @@ import sys
 import time
 
 ckpt = sys.argv[1]
+# max_length 1024: the backbone config allows 40960 positions; the training
+# default 512 refuses (not truncates) overflowing candidate paths. Game states
+# with 17-34 enriched options need ~550-700 tokens.
+max_len = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
 sys.path.insert(0, r"F:\Space\PRO\test\nanojev\NanoJev\scripts")
 
 from predict_toy_decisions import DecisionPredictor  # noqa: E402
 
-engine = DecisionPredictor(ckpt, precision="bf16")
+engine = DecisionPredictor(ckpt, precision="bf16", max_length=max_len)
 print("READY", flush=True)
 
 
