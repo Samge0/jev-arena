@@ -47,19 +47,23 @@ Jev API ~1.16s（含 choice+noul fan-out 单次调用）· NanoJev ~0.3-1.8s（G
 ## 🚀 快速开始
 
 ```bash
-# 1. 录制对局（需要 .env 里的 TYPESAFE_API_KEY；nanojev/laya 走本地 venv）
+# 0. 配置（首次）：复制模板并填入 API key 与外部模型仓库路径
+cp .env.example .env
+#   必填：TYPESAFE_API_KEY / NANOJEV_HOME / JEVSHOOT_HOME（详见 .env.example 注释）
+
+# 1. 录制对局（nanojev/laya 走本地 venv）
 python runner/run_matches_v3.py          # 断点续跑，schema jev-arena-v3
 
-# 2. 打开回放站
+# 2. 打开回放站（端口默认 8775，可用 .env 的 ARENA_PORT 覆盖）
 cd web && python -m http.server 8775
 # 浏览器打开 http://127.0.0.1:8775  （#tetris 直达俄罗斯方块）
 
 # 3. 验证
-python test_games.py                     # 游戏引擎单测（7 项）
+python test_games.py                     # 游戏引擎单测（6 项）
 python test_tetris_v2.py                 # 旋转引擎单测（6 项）
 python replay_check.py                   # 12 局录像逐一回放一致性校验
 python verify_site.py                    # Playwright 站点验证（8 项断言）
-python record_videos.py                  # 录制对比视频（webm → 手动转 mov）
+python record_videos.py                  # 录制对比视频（webm → 手动转 mov，不入库）
 ```
 
 ## 🎯 对局协议（公平性 + 官方最佳实践）
@@ -73,29 +77,30 @@ python record_videos.py                  # 录制对比视频（webm → 手动�
 5. **唯一合法动作代码直接执行**（不耗模型调用）
 6. **按引擎适配状态渲染**：nanojev 用 compact 状态（512 训练上限→1024 推理上限已验证骨干支持 40960）
 
-历史版本录像：`web/arena_results_v{1,2,3}.json`（含 v1 中性协议、v2 旋转动作、v3 首版最佳实践）。
+v1-v3 的历史录像 JSON 与旧入口脚本已清理（当前只保留 v4 最新录像），需要时从 git 历史查看。
 
 ## 📁 目录结构
 
 ```
 jev-arena/
+├── config.py                      # 配置收口：读 .env，外部仓库路径强制配置
 ├── games/
-│   ├── tetris.py / tetris_v2.py   # 列选择版 / 朝向×列组合版（20 行标准棋盘）
+│   ├── tetris_v2.py               # 朝向×列组合动作 Tetris（20 行标准棋盘）
 │   └── game1024.py                # 标准 2048 生成规则（每次有效移动生成新块）
 ├── runner/
-│   ├── engines.py / engines_multi.py   # 单问题 / fan-out 多问题适配器
-│   ├── nanojev_worker.py / laya_worker.py  # 行协议子进程（独立 venv）
+│   ├── engines_multi.py           # fan-out 多问题适配器（jev / nanojev / laya）
+│   ├── nanojev_worker.py / laya_worker.py  # 行协议子进程（各自独立 venv）
 │   ├── protocol_v3.py             # 策略层级指令 + 状态渲染 + 组合评分
 │   ├── run_matches_v3.py          # 对局录制（断点续跑、增量落盘）
-│   └── smoke*.py                  # 冒烟测试
+│   └── smoke_v3.py                # 冒烟测试（三引擎各问一个状态）
 ├── web/                           # 纯静态三面板回放站（vanilla HTML/CSS/JS）
-├── docs-media/                    # 对比视频 .mov（README 引用）
-├── shots/                         # Playwright 截图证据
+├── shots/                         # Playwright 截图证据（verify_site.py 生成）
 ├── test_games.py / test_tetris_v2.py
 ├── replay_check.py                # 录像回放一致性校验（作者同款思路）
 ├── verify_site.py                 # 站点 8 项断言
-├── ACCEPTANCE.md → ACCEPTANCE_V4.md   # 四轮验收报告（含弯路复盘）
-└── .env                           # TYPESAFE_API_KEY / TYPESAFE_MODEL（不入库）
+├── record_videos.py               # 对比视频录制（webm → docs-media/，不入库）
+├── ACCEPTANCE.md → ACCEPTANCE_V4.md   # 四轮验收报告（历史快照，含弯路复盘）
+└── .env / .env.example            # 本机配置 / 模板（.env 不入库）
 ```
 
 ## 📜 四轮迭代史（详见各轮 ACCEPTANCE）
@@ -109,5 +114,5 @@ jev-arena/
 
 ## 致谢与参考
 
-- 风格与交互范式参考 [NanoJev side-by-side 展示站](https://nanojev.tianyuchen99.chatgpt.site/)（Tianyu Chen，源码在本地 `F:\Space\PRO\test\nanojev\NanoJev\web\`）
+- 风格与交互范式参考 [NanoJev side-by-side 展示站](https://nanojev.tianyuchen99.chatgpt.site/)（Tianyu Chen，源码在本地 nanojev 仓库（`NANOJEV_HOME`）的 `NanoJev/web/` 目录）
 - [TypeSafe Jev 文档](https://docs.typesafe.ai/introduction) · [NanoJev](https://github.com/TianyuCodings/NanoJev) · [laya](https://huggingface.co/convaiinnovations/laya)
