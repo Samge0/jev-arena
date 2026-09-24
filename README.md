@@ -1,5 +1,7 @@
 # Jev Arena — System One 模型实战对比场
 
+> 🌐 **[在线宣传页](https://samge0.github.io/jev-arena/)** — 战绩表、对局协议、工程验证一页看懂
+
 让 **Jev**（TypeSafe 云端 API）、**NanoJev**（0.6B 本地权重）、**Laya**（421M 本地权重）在
 **俄罗斯方块** 和 **1024** 上用完全相同的问题序列对局，录制每一步的选择与概率分布，
 在参考 [nanojev 展示站](https://nanojev.tianyuchen99.chatgpt.site/) 风格的三面板回放页中同步播放。

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>jev-arena — System One 模型实战对比场</title>
+<meta name="description" content="Jev（TypeSafe 云端）、NanoJev（0.6B）、Laya（421M）三引擎在俄罗斯方块与 1024 上逐字节公平对局，录制每步选择与概率分布，纯静态三面板回放站同步播放。">
+<style>
+:root{
+  --primary:#00d992; --primary-soft:#2fd6a1; --primary-deep:#10b981; --on-primary:#101010;
+  --ink:#f2f2f2; --ink-strong:#ffffff; --body:#bdbdbd; --mute:#8b949e; --hairline:#2a2a2a;
+  --canvas:#101010; --canvas-soft:#1a1a1a; --canvas-elev:#161616;
+  --danger:#e0604c; --warn:#e8a55a;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Courier New",monospace;
+  --sans:"Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--canvas);color:var(--body);font-family:var(--sans);line-height:1.7;font-size:16px}
+::selection{background:var(--primary);color:var(--on-primary)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--primary)}
+h1,h2,h3{color:var(--ink);font-weight:400;font-family:var(--sans)}
+h2{font-size:34px;line-height:1.2;letter-spacing:-0.9px}
+h3{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.mono{font-family:var(--mono)}
+
+nav{position:sticky;top:0;z-index:50;background:rgba(16,16,16,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hairline)}
+.nav-in{max-width:1100px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:24px}
+.brand{font-family:var(--mono);font-size:16px;color:var(--ink);font-weight:600}
+.brand b{color:var(--primary)}
+nav .links{margin-left:auto;display:flex;gap:22px;font-size:14px}
+nav .links a{color:var(--mute)}
+nav .links a:hover{color:var(--ink);text-decoration:none}
+.nav-cta{background:var(--primary);color:var(--on-primary)!important;padding:8px 18px;border-radius:8px;font-weight:600;font-family:var(--mono);font-size:13px}
+.nav-cta:hover{background:var(--primary-soft);text-decoration:none}
+
+.hero{padding:84px 0 60px;display:grid;grid-template-columns:1.02fr .98fr;gap:52px;align-items:center}
+.hero h1{font-size:52px;line-height:1.1;letter-spacing:-1.4px;margin:18px 0 20px}
+.hero h1 em{font-style:normal;color:var(--primary)}
+.hero .lede{font-size:17.5px;max-width:33em}
+.hero .lede b{color:var(--ink);font-weight:600}
+.hero-actions{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap}
+.btn{display:inline-block;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14.5px;font-family:var(--mono);transition:transform .15s, background .15s, border-color .15s}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn-primary{background:var(--primary);color:var(--on-primary)}
+.btn-primary:hover{background:var(--primary-soft)}
+.btn-ghost{border:1px solid var(--hairline);color:var(--ink);background:var(--canvas-soft)}
+.btn-ghost:hover{border-color:var(--mute)}
+.hero-facts{display:flex;gap:28px;margin-top:36px;flex-wrap:wrap}
+.fact b{display:block;font-family:var(--mono);font-size:24px;color:var(--ink);font-weight:600}
+.fact span{font-size:12.5px;color:var(--mute)}
+
+/* ── arena panel ── */
+.arena{background:var(--canvas-soft);border:1px solid var(--hairline);border-radius:16px;padding:22px 22px 16px;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.a-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--mute);letter-spacing:1.2px;margin-bottom:14px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);display:inline-block;margin-right:7px;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.scorebar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.eng{border:1px solid var(--hairline);border-radius:10px;padding:10px 12px;background:var(--canvas-elev)}
+.eng .nm{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;color:var(--mute)}
+.eng .sc{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--ink);margin-top:2px}
+.eng.lead{border-color:var(--primary)}
+.eng.lead .sc{color:var(--primary)}
+.a-body{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+.board{display:grid;grid-template-columns:repeat(10,18px);grid-auto-rows:18px;gap:2px;background:#0b0b0b;padding:8px;border-radius:10px;border:1px solid var(--hairline)}
+.cell{background:#191919;border-radius:3px}
+.cell.f1{background:var(--primary);opacity:.92}
+.cell.f2{background:var(--primary-deep);opacity:.75}
+.cell.f3{background:#0e7a5a;opacity:.6}
+.prob{display:flex;flex-direction:column;gap:7px;padding-top:4px}
+.pr{display:grid;grid-template-columns:44px 1fr 40px;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--mute)}
+.pr .bar{height:9px;background:#222;border-radius:5px;overflow:hidden}
+.pr .bar i{display:block;height:100%;width:0;background:var(--primary);border-radius:5px;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.pr.win .bar i{background:var(--primary-soft)}
+.pr.win{color:var(--ink)}
+.a-foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline)}
+.a-foot .ok{color:var(--primary)}
+
+/* ── sections ── */
+section{padding:70px 0}
+.sec-head{max-width:660px;margin-bottom:42px}
+.sec-head p{color:var(--mute);margin-top:12px;font-size:16px}
+
+table.match{width:100%;border-collapse:collapse;font-size:14px;border:1px solid var(--hairline);border-radius:14px;overflow:hidden}
+.match-wrap{border:1px solid var(--hairline);border-radius:14px;overflow:hidden;margin-bottom:26px}
+.match-wrap h3{font-family:var(--mono);font-size:13px;letter-spacing:1.6px;color:var(--ink);padding:16px 22px;background:var(--canvas-soft);border-bottom:1px solid var(--hairline);text-transform:uppercase}
+table.match th{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mute);text-align:left;padding:13px 22px;font-weight:600;border-bottom:1px solid var(--hairline)}
+table.match td{padding:13px 22px;border-bottom:1px solid var(--hairline)}
+table.match tr:last-child td{border-bottom:none}
+table.match td:first-child{color:var(--ink);font-weight:600}
+table.match tr.lead td{background:rgba(0,217,146,.05)}
+table.match tr.lead td:first-child{color:var(--primary)}
+table.match .num{font-family:var(--mono)}
+table.match .zero{color:var(--mute)}
+.match-note{font-size:13px;color:var(--mute);margin-top:-8px;margin-bottom:26px}
+
+.lat{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.lat-card{border:1px solid var(--hairline);border-radius:14px;padding:24px;background:var(--canvas-soft)}
+.lat-card .v{font-family:var(--mono);font-size:26px;color:var(--ink);font-weight:600}
+.lat-card.lead .v{color:var(--primary)}
+.lat-card .n{font-size:13.5px;color:var(--mute);margin-top:6px}
+
+.proto{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.p-card{border:1px solid var(--hairline);border-radius:14px;padding:26px;background:var(--canvas-elev)}
+.p-card .no{font-family:var(--mono);font-size:12px;color:var(--primary);letter-spacing:1.5px}
+.p-card h3{margin:10px 0 8px}
+.p-card p{font-size:14px;color:var(--mute)}
+.p-card code{font-family:var(--mono);font-size:12.5px;background:#0b0b0b;border:1px solid var(--hairline);padding:1px 7px;border-radius:6px;color:var(--primary-soft)}
+
+.eng-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.eng-card{border:1px solid var(--hairline);border-radius:14px;padding:26px}
+.eng-card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;color:var(--mute);text-transform:uppercase}
+.eng-card h3{margin:8px 0 6px;font-size:17px}
+.eng-card p{font-size:13.5px;color:var(--mute)}
+
+.cta{background:var(--canvas-soft);border:1px solid var(--hairline);border-radius:20px;padding:56px;position:relative;overflow:hidden}
+.cta::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 60% 90% at 85% 10%,rgba(0,217,146,.09),transparent 60%);pointer-events:none}
+.cta h2{margin-bottom:12px}
+.cta p{color:var(--mute);margin-bottom:28px;max-width:38em}
+.cta .row{display:flex;gap:14px;flex-wrap:wrap}
+.cta code{font-family:var(--mono);font-size:13px;background:#0b0b0b;border:1px solid var(--hairline);padding:2px 9px;border-radius:6px;color:var(--primary-soft)}
+
+footer{border-top:1px solid var(--hairline);padding:32px 0 42px;margin-top:70px}
+footer .wrap{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mute);font-family:var(--mono)}
+
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.live-dot{animation:none}}
+
+@media (max-width:940px){
+  .hero{grid-template-columns:1fr;gap:44px;padding-top:52px}
+  .hero h1{font-size:38px}
+  .a-body{grid-template-columns:1fr}
+  .board{justify-self:center}
+  .proto{grid-template-columns:1fr}
+  .eng-grid{grid-template-columns:1fr}
+  .lat{grid-template-columns:1fr}
+  nav .links a:not(.nav-cta){display:none}
+  .cta{padding:38px 26px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <div class="brand">jev<b>▲</b>arena</div>
+    <div class="links">
+      <a href="#protocol">对局协议</a>
+      <a href="#scores">战绩</a>
+      <a href="#verify">工程验证</a>
+      <a class="nav-cta" href="https://github.com/Samge0/jev-arena" target="_blank" rel="noopener">GitHub →</a>
+    </div>
+  </div>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <div class="eyebrow">System One Decision Benchmark</div>
+    <h1>三个模型，<br>同一棋盘，<br><em>逐字节公平</em>。</h1>
+    <p class="lede"><b>Jev</b>（TypeSafe 云端 API）、<b>NanoJev</b>（0.6B 本地权重）、<b>Laya</b>（421M 本地权重）在<b>俄罗斯方块</b>与 <b>1024</b> 上用完全相同的问题序列对局，录制每一步的选择与概率分布，在纯静态三面板回放站同步播放。</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/Samge0/jev-arena" target="_blank" rel="noopener">查看源码</a>
+      <a class="btn btn-ghost" href="#scores">看战绩 ↓</a>
+    </div>
+    <div class="hero-facts">
+      <div class="fact"><b>3</b><span>引擎 · 云 API / 0.6B / 421M</span></div>
+      <div class="fact"><b>2</b><span>游戏 · Tetris / 1024</span></div>
+      <div class="fact"><b>12 局</b><span>录像回放一致性校验</span></div>
+      <div class="fact"><b>v4</b><span>协议 · fan-out + 组合评分</span></div>
+    </div>
+  </div>
+  <div class="arena" aria-label="三引擎对战演示面板">
+    <div class="a-head"><span><span class="live-dot"></span>LIVE · tetris · seed=2026</span><span id="ppBlock">block 42 / 80</span></div>
+    <div class="scorebar">
+      <div class="eng lead"><div class="nm">JEV · CLOUD</div><div class="sc" id="scJ">1900</div></div>
+      <div class="eng"><div class="nm">NANOJEV · 0.6B</div><div class="sc" id="scN">0</div></div>
+      <div class="eng"><div class="nm">LAYA · 421M</div><div class="sc" id="scL">0</div></div>
+    </div>
+    <div class="a-body">
+      <div class="board" id="board"></div>
+      <div class="prob" id="prob">
+        <div class="pr"><span>col 0·0</span><span class="bar"><i style="--w:4%"></i></span><span>.04</span></div>
+        <div class="pr"><span>col 3·0</span><span class="bar"><i style="--w:9%"></i></span><span>.09</span></div>
+        <div class="pr win"><span>col 6·1</span><span class="bar"><i style="--w:71%"></i></span><span>.71</span></div>
+        <div class="pr"><span>col 8·1</span><span class="bar"><i style="--w:11%"></i></span><span>.11</span></div>
+        <div class="pr"><span>col 9·0</span><span class="bar"><i style="--w:5%"></i></span><span>.05</span></div>
+      </div>
+    </div>
+    <div class="a-foot"><span>choice = argmax(col 6, rot 1)</span><span class="ok">Σp = 1.00 ✓</span></div>
+  </div>
+</header>
+
+<section id="protocol">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Match Protocol</div>
+      <h2>对局协议：公平性是设计出来的</h2>
+      <p>每步对三引擎发送逐字节相同的请求，遵循 TypeSafe 官方文档与 NanoJev 作者实践。</p>
+    </div>
+    <div class="proto">
+      <div class="p-card reveal">
+        <div class="no">RULE 01</div>
+        <h3>逐字节相同题面</h3>
+        <p>同一 (game, seed) 下三引擎看到完全相同的 state 文本与选项描述——对局协议即公平性保证。Tetris 死亡规则 = 落点越出顶边。</p>
+      </div>
+      <div class="p-card reveal">
+        <div class="no">RULE 02</div>
+        <h3>选项带真实后果数据</h3>
+        <p>每个落点/方向附消行数、洞数变化、高度和/起伏度（Dellacherie 特征）。1024 选项必须携带真实合并后果——纯方向词会让所有模型原地打转。这是措辞工程，不是模型能力问题。</p>
+      </div>
+      <div class="p-card reveal">
+        <div class="no">RULE 03</div>
+        <h3>策略层级指令 + fan-out</h3>
+        <p>Tetris「①消行②防洞③列低且均匀」；1024「①合并分②大合并③空格」。choice + noul 风险门一次调用并行（官方 12x 便宜 / 10x 快）。</p>
+      </div>
+      <div class="p-card reveal">
+        <div class="no">RULE 04</div>
+        <h3>TypeSafe 契约校验</h3>
+        <p>答案规范化到契约：<code>probabilities</code> 键完备、归一、<code>choice=argmax</code>。不合规即判负，不给模型「口胡」空间。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="scores">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Final Scores</div>
+      <h2>最终战绩（v4 协议）</h2>
+    </div>
+
+    <div class="match-wrap reveal">
+      <h3>Tetris · 10×20 · 朝向×列组合动作 · 80 块预算</h3>
+      <table class="match">
+        <thead><tr><th>引擎</th><th>seed 2026</th><th>seed 901</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr class="lead"><td>Jev</td><td class="num">1900 分 / 17 消行 / 80 块打满</td><td class="num">1280 分 / 26 消行 / 80 块打满</td><td>seed901 终局仅 60 格填充、列高 4–9，真正的低矮平整形态</td></tr>
+          <tr><td>NanoJev</td><td class="num zero">0 分 / 29 块</td><td class="num zero">0 分 / 26 块</td><td>全程真实模型决策（1024-token 上限），朝向使用 4/4</td></tr>
+          <tr><td>Laya</td><td class="num zero">0 分 / 22 块</td><td class="num zero">0 分 / 27 块</td><td>one-hot 分布撑不起 17–34 选项空间</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="match-wrap reveal">
+      <h3>1024 · 标准 2048 规则 · 4×4</h3>
+      <table class="match">
+        <thead><tr><th>引擎</th><th>seed 2026</th><th>seed 901</th><th>终局形态</th></tr></thead>
+        <tbody>
+          <tr class="lead"><td>Jev</td><td class="num">1788 分 / 128</td><td class="num">1564 分 / 128</td><td>降幂蛇形（128,64,32,16 / 8,32,16,8 / …）= 标准高手形态</td></tr>
+          <tr><td>Laya</td><td class="num">1072 分 / 128</td><td class="num">1596 分 / 128</td><td>满盘碎块</td></tr>
+          <tr><td>NanoJev</td><td class="num zero">644 分 / 64</td><td class="num zero">600 分 / 64</td><td>早期卡死</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-head reveal" style="margin-top:44px">
+      <div class="eyebrow">Latency</div>
+      <h2 style="font-size:26px">每步决策延迟</h2>
+    </div>
+    <div class="lat">
+      <div class="lat-card lead reveal"><div class="v">~1.16s</div><div class="n">Jev API · choice+noul fan-out 单次调用</div></div>
+      <div class="lat-card reveal"><div class="v">0.3–1.8s</div><div class="n">NanoJev 0.6B · GPU1 共享</div></div>
+      <div class="lat-card reveal"><div class="v">~0.1s</div><div class="n">Laya 421M</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="verify">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Engineering</div>
+      <h2>工程与验证</h2>
+      <p>竞技场的可信度来自可重跑的验证链，而非一次性截图。</p>
+    </div>
+    <div class="eng-grid">
+      <div class="eng-card reveal">
+        <div class="tag">Replay</div>
+        <h3>纯静态回放站</h3>
+        <p>三面板同步播放，0 框架 0 依赖，<span class="mono">#tetris</span> 锚点直达俄罗斯方块。</p>
+      </div>
+      <div class="eng-card reveal">
+        <div class="tag">Consistency</div>
+        <h3>12 局回放校验</h3>
+        <p><span class="mono">replay_check.py</span> 逐一回放录像，动作序列与录制时逐字节一致才放行。</p>
+      </div>
+      <div class="eng-card reveal">
+        <div class="tag">Unit Tests</div>
+        <h3>引擎单测 12 项</h3>
+        <p><span class="mono">test_games.py</span> 6 项 + <span class="mono">test_tetris_v2.py</span> 旋转引擎 6 项。</p>
+      </div>
+      <div class="eng-card reveal">
+        <div class="tag">E2E</div>
+        <h3>站点断言 8 项</h3>
+        <p><span class="mono">verify_site.py</span> 用 Playwright 对回放站跑真实浏览器断言。</p>
+      </div>
+      <div class="eng-card reveal">
+        <div class="tag">Resume</div>
+        <h3>断点续跑</h3>
+        <p><span class="mono">run_matches_v3.py</span> 中断后从上次进度继续，schema <span class="mono">jev-arena-v3</span>。</p>
+      </div>
+      <div class="eng-card reveal">
+        <div class="tag">Recording</div>
+        <h3>对局录制</h3>
+        <p><span class="mono">record_videos.py</span> webm 录制 → 手动转 mov，不入库。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" style="padding-top:0">
+  <div class="cta reveal">
+    <h2>跑你自己的对局</h2>
+    <p>复制 <code>.env.example</code> 填入 API key 与本地权重路径 → <code>python runner/run_matches_v3.py</code> → <code>cd web && python -m http.server 8775</code>，浏览器打开回放站看三引擎同屏对决。</p>
+    <div class="row">
+      <a class="btn btn-primary" href="https://github.com/Samge0/jev-arena" target="_blank" rel="noopener">GitHub 仓库</a>
+      <a class="btn btn-ghost" href="https://github.com/Samge0/jev-arena#readme" target="_blank" rel="noopener">完整 README</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>jev-arena — System One 模型实战对比场</div>
+    <div>逐字节公平 · 录制 → 校验 → 回放</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // board render: 10x20 grid, deterministic low-flat pattern
+  var board = document.getElementById('board');
+  var cells = [];
+  for(var i=0;i<200;i++){ var d=document.createElement('div'); d.className='cell'; board.appendChild(d); cells.push(d); }
+  // low flat stack: bottom 4 rows with one pit at col 6 (seed 2026 final form)
+  var heights = [5,4,4,3,4,4,1,4,4,5]; // per-column filled counts
+  function render(){
+    cells.forEach(function(c){ c.className='cell'; });
+    heights.forEach(function(h,col){
+      for(var r=0;r<h;r++){
+        var row = 19-r;
+        var c = cells[row*10+col];
+        c.className = 'cell ' + (r===h-1 ? 'f1' : (r>=h-2 ? 'f2' : 'f3'));
+      }
+    });
+  }
+  render();
+
+  // probability bars animate in when hero visible; win bar re-highlights
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bars = document.querySelectorAll('#prob .bar i');
+  function setBars(){
+    bars.forEach(function(b){ b.style.width = b.style.getPropertyValue('--w'); });
+  }
+  if(reduced){ setBars(); }
+  else{
+    var io1 = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ setTimeout(setBars, 250); io1.disconnect(); } });
+    },{threshold:.3});
+    io1.observe(document.getElementById('prob'));
+  }
+
+  // subtle live block counter on score head
+  var blockEl = document.getElementById('ppBlock');
+  if(!reduced && blockEl){
+    var n = 42;
+    setInterval(function(){ n = n>=80 ? 42 : n+1; blockEl.textContent = 'block ' + n + ' / 80'; }, 1400);
+  }
+
+  // reveal on scroll
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body>
+</html>
